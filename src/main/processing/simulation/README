@@ -1,0 +1,5 @@
+Simulates a synchronization algorithm, applied to blinking lights. New nodes are added every second, until a maximum threshold is reached. The simulation allows recording of video.
+
+Required Dependencies:
+Toxiclibs (http://hg.postspectacular.com/toxiclibs/downloads/)
+
