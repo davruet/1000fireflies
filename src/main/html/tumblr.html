@@ -1,0 +1,264 @@
+<html>
+    <head>
+        <title>{Title}</title>
+        <link rel="shortcut icon" href="{Favicon}">
+        <link rel="icon" href="{Favicon}">
+        <link rel="alternate" type="application/rss+xml" href="{RSS}">
+        {block:Description}
+            <meta name="description" content="{MetaDescription}" />
+        {/block:Description}
+        <style type="text/css">
+            body {
+                font-family: monospace;
+                font-size: 12px;
+                margin: 100px 0px 0px 0px;
+
+                color: #333333;
+                text-align: center;
+            }
+            p#description {
+                text-align: center;
+                margin-bottom: 25px;
+                width: 400px;
+                margin: 0 auto;
+                font-size: 11px;
+                color: #666666;
+            }
+            
+            
+            ul#pages {
+                margin: 25px; 0px; 25px; 0px;   
+                padding: 0px;
+            }
+            
+            ul#pages li {
+                display:inline;
+                list-style-type:none;
+               
+            }
+            
+            ul#pages li:after {
+                content: " |";
+                
+        	}
+        		
+            ul#pages li:last-child:after {
+        	content: "";
+        	}
+
+            
+            A:link {text-decoration: none; color: #ee0000;}
+            A:visited {text-decoration: color: #cc0000;}
+            A:active {text-decoration: none}
+            A:hover {text-decoration: underline; color: #ff0000;}
+            
+            p#footer {
+                margin-top: 50px;   
+                text-align: center;
+            }
+            h1, h2, h3, ol#posts, div.pages, div#footer
+            { text-align: center; }
+
+            h1 {
+                font-weight: normal;
+                font-size: 14px;
+                margin-bottom: 25px;
+            }
+            ol#posts {
+                margin: 50px 0px 0px 0px;
+                list-style-type: none;
+                list-style-position: inside;
+                padding: 0px;
+            }
+            
+            ol#posts li {
+                /*margin: 50px 0px 0px 0px;    */
+                margin-top: 50px;
+                font-size: 12px;
+            }
+            .date {
+                font-size: 11px;
+                color: #AAAAAA;
+                text-align: center;
+            }
+            
+            li.post_text,li.post_quote,li.post_link,li.post_chat, div.caption {
+                width: 400px;
+                margin: 0 auto;
+                text-align: left;
+            }
+
+            ol.notes {
+                padding: 0px;
+                margin: 25px 0px;
+                list-style-type: none;
+                border-bottom: solid 1px #ccc;
+            }
+
+            ol.notes li.note {
+                border-top: solid 1px #ccc;
+                padding: 10px;
+            }
+
+            ol.notes li.note img.avatar {
+                vertical-align: -4px;
+                margin-right: 10px;
+                width: 16px;
+                height: 16px;
+            }
+
+            ol.notes li.note span.action {
+                font-weight: bold;
+            }
+
+            ol.notes li.note .answer_content {
+                font-weight: normal;
+            }
+
+            ol.notes li.note blockquote {
+                border-color: #eee;
+                padding: 4px 10px;
+                margin: 10px 0px 0px 25px;
+            }
+
+            ol.notes li.note blockquote a {
+                text-decoration: none;
+            }
+        </style>
+        <script type="text/javascript">
+        
+          var _gaq = _gaq || [];
+          _gaq.push(['_setAccount', 'UA-4406956-4']);
+          _gaq.push(['_trackPageview']);
+        
+          (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+          })();
+        
+        </script>
+    </head>
+    <body>
+        <h1>{Title}</h1>
+
+        {block:Description}
+            <p id="description">{Description}</p>
+        {/block:Description}
+        
+        <ul id="pages">
+         {block:Pages}
+        <li><a class="pagelink" href="{URL}">{Label}</a></li>
+        {/block:Pages}    
+        </ul>
+        
+        <ol id="posts">
+            {block:Posts}
+                {block:Text}
+                    <li class="post_text">
+                        {block:Title}
+                            <h3 class="title"><a href="{Permalink}">{Title}</a></h3>
+                        {/block:Title}
+
+                        {Body}
+                    </li>
+                {/block:Text}
+
+                {block:Photo}
+                    <li class="post_photo">
+                        <img src="{PhotoURL-500}" alt="{PhotoAlt}"/>
+
+                        {block:Caption}
+                            <div class="caption">{Caption}</div>
+                        {/block:Caption}
+                    </li>
+                {/block:Photo}
+
+                {block:Photoset}
+                    <li class="post_photoset">
+                        {Photoset-500}
+
+                        {block:Caption}
+                            <div class="caption">{Caption}</div>
+                        {/block:Caption}
+                    </li>
+                {/block:Photoset}
+
+                {block:Quote}
+                    <li class="post_quote">
+                        "{Quote}"
+
+                        {block:Source}
+                            <div class="source">{Source}</div>
+                        {/block:Source}
+                    </li>
+                {/block:Quote}
+
+                {block:Link}
+                    <li class="post_link">
+                        <a href="{URL}" class="link" {Target}>{Name}</a>
+
+                        {block:Description}
+                            <div class="description">{Description}</div>
+                        {/block:Description}
+                    </li>
+                {/block:Link}
+
+                {block:Chat}
+                    <li class="post_chat">
+                        {block:Title}
+                            <h3><a href="{Permalink}">{Title}</a></h3>
+                        {/block:Title}
+
+                        <ul class="chat">
+                            {block:Lines}
+                                <li class="{Alt} user_{UserNumber}">
+                                    {block:Label}
+                                        <span class="label">{Label}</span>
+                                    {/block:Label}
+
+                                    {Line}
+                                </li>
+                            {/block:Lines}
+                        </ul>
+                    </li>
+                {/block:Chat}
+
+                {block:Video}
+                    <li class="post_video">
+                        {Video-500}
+
+                        {block:Caption}
+                            <div class="caption">{Caption}</div>
+                        {/block:Caption}
+                    </li>
+                {/block:Video}
+
+                {block:Audio}
+                    <li class="post_audio">
+                        {AudioPlayerBlack}
+
+                        {block:Caption}
+                            <div class="caption">{Caption}</div>
+                        {/block:Caption}
+                    </li>
+                {/block:Audio}
+                <div class="date">
+                {block:Date}{ShortMonth} {DayOfMonth} {Year} {/block:Date} 
+                </div>
+            {/block:Posts}
+        </ol>
+
+        <p id="footer">
+            {block:PreviousPage}
+                <a href="{PreviousPage}">&#171; Previous</a>
+            {/block:PreviousPage}
+
+            {block:NextPage}
+                <a href="{NextPage}">Next &#187;</a>
+            {/block:NextPage}
+
+            <a href="/archive">Archive</a>
+        </p>
+    </body>
+</html>
