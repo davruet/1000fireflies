@@ -1,23 +1,27 @@
 /*
-  Blink
-  Turns on an LED on for one second, then off for one second, repeatedly.
- 
-  This example code is in the public domain.
- */  
+  THE KURAMOTO MODEL
+  
+*/
  
 #include <Ports.h>
 #include <RF12.h>
+#include <avr/sleep.h>
 
-/* For ATTINY */
 
 
-int ledPin = 3;
-/*int irXmitPin = 1;
-int irReceivePin = 3;*/
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
 
-/* For ARDUINO */
 
-//int ledPin = 9;
+#define LED_PIN 3
+#define SWITCH_PIN 8
+
+#define RF12_SLEEP 0
+#define RF12_WAKEUP -1
 
 long period = 1600000;
 long halfPeriod = period / 2;
@@ -33,32 +37,49 @@ boolean ledOn = false;
 int phaseShiftFactor = 4;
 int irRecoverTime = 400;
 
-/*
-void p(char *fmt, ... ){
-        char tmp[128]; // resulting string limited to 128 chars
-        va_list args;
-        va_start (args, fmt );
-        vsnprintf(tmp, 128, fmt, args);
-        va_end (args);
-        //Serial.print(tmp);
-}
-  */  
+//power button variables
+unsigned int buttonState = 0;
+boolean waitingForSleep = false;
+boolean buttonIsDown = false;
+boolean shutdownEnabled = false;
 
 
-void setup() {                
-  // initialize the digital pin as an output.
-  // Pin 13 has an LED connected on most Arduino boards:
-  pinMode(ledPin, OUTPUT);  
+void setup() {            
+
+  pinMode(SWITCH_PIN,INPUT);
+  digitalWrite(SWITCH_PIN, HIGH);
+  sbi(GIMSK,PCIE0); // Enable PCI
+  sbi(PCMSK0,PCINT2); // Set PCInt2 as the PCI pin  
+
+  pinMode(LED_PIN, OUTPUT);  
 
   rf12_initialize(4, RF12_433MHZ, 20);
-  /*
-  for (int i = 1; i <= 5; i++){
-    pinMode(i, INPUT);
-    digitalWrite(i, HIGH);  
-  }*/
-  // troubleshooting
- // Serial.begin(19200);
+
 }
+
+void checkPowerToggle(){
+  unsigned int currentValue = getRawButtonValue();
+  buttonState <<= 1;
+  buttonState |= currentValue;
+  
+  buttonIsDown = (buttonState == 0xffff);
+  shutdownEnabled = shutdownEnabled | buttonState == 0; 
+  if (buttonIsDown && shutdownEnabled){
+    waitingForSleep = true;
+    
+  } else {
+    
+    if (waitingForSleep){
+      shutdownEnabled = false;
+      waitingForSleep = false;
+      goToSleep();
+      
+      shutdownEnabled = false;
+      waitingForSleep = false;
+    } 
+  }  
+}
+
 
 unsigned long getPhase(){
     unsigned long now = micros();
@@ -83,6 +104,8 @@ boolean listen(){
 
 void loop() {
   
+  checkPowerToggle();
+  
   if (listen()) {
     //p("pulse %i avg %i val %i\n ", irDiff, irFilteredValue, val);
     long timediff = micros() - ledTriggerTime;
@@ -102,7 +125,7 @@ void loop() {
   // a bit of a hack, but phase might have had an overflow, if so, just use zero.
   if (!ledOn && phase > period){
     ledOn = true;
-    analogWrite(ledPin, 255);
+    analogWrite(LED_PIN, 255);
     
     broadcast();
     
@@ -113,13 +136,13 @@ void loop() {
 
   if (ledOn && phase <= ledDuration){
    // p("maintaining led");
-    //digitalWrite(ledPin, HIGH);
-       analogWrite(ledPin, (ledDuration - phase) * 255 / ledDuration);
+    //digitalWrite(LED_PIN, HIGH);
+       analogWrite(LED_PIN, (ledDuration - phase) * 255 / ledDuration);
   } else if (ledOn && phase > ledDuration){
 
     ledOn = false;
-    analogWrite(ledPin, 0);
-    //digitalWrite(ledPin, LOW);
+    analogWrite(LED_PIN, 0);
+    //digitalWrite(LED_PIN, LOW);
   }
 
   
@@ -127,6 +150,44 @@ void loop() {
   
   
 }
+
+/** Gets the raw (un-debounced) value from the button.
+Returns 1 if button is pressed, 0 otherwise. */
+unsigned int getRawButtonValue(){
+  return digitalRead( SWITCH_PIN) == LOW;
+}
+
+/** Non-standard things to do before sleeping (e.g. shut off peripherals, etc.)
+*/
+void getReadyForBed(){
+  waitingForSleep = false;
+  rf12_sleep(RF12_SLEEP);
+  digitalWrite(LED_PIN, LOW);
+}
+
+/** Non-standard things to do after awakening (e.g. turn on peripherals, etc.)
+*/
+void startTheDay(){
+  rf12_sleep(RF12_WAKEUP);
+  //digitalWrite(SWITCH_PIN, HIGH);
+  //digitalWrite(LED_PIN, HIGH);
+}
+
+
+void goToSleep() {
+  getReadyForBed();
+  cbi(ADCSRA,ADEN); // Turn off ADC
+
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Go to sleep
+  sleep_mode(); // Sleep starts after this line
+  //sleep_cpu();
+
+  sbi(ADCSRA,ADEN);  // Turn on ADC
+  startTheDay();
+}
+
+ISR(PCINT0_vect) {} //no-op interrupt
+
 
 
 
