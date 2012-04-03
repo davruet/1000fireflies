@@ -50,7 +50,7 @@ void setup() {
   // Pin 13 has an LED connected on most Arduino boards:
   pinMode(ledPin, OUTPUT);  
 
-  rf12_config();
+  rf12_initialize(4, RF12_433MHZ, 20);
   /*
   for (int i = 1; i <= 5; i++){
     pinMode(i, INPUT);
@@ -67,10 +67,23 @@ unsigned long getPhase(){
     return phase;
 }
 
+boolean listen(){
+  return rf12_recvDone() && rf12_crc == 0 && rf12_len == sizeof payload;  
+  //return false;
+}
+
+ void broadcast(){
+
+  if (rf12_canSend()){
+
+    rf12_sendStart(0, &payload, sizeof payload, 2); 
+  }
+}
+
 
 void loop() {
   
-  if (rf12_recvDone() && rf12_crc == 0 && rf12_len == sizeof payload) {
+  if (listen()) {
     //p("pulse %i avg %i val %i\n ", irDiff, irFilteredValue, val);
     long timediff = micros() - ledTriggerTime;
     long adjustment;
@@ -91,11 +104,7 @@ void loop() {
     ledOn = true;
     analogWrite(ledPin, 255);
     
-    while (!rf12_canSend()){
-      delay(2);  
-      rf12_recvDone();
-    }
-    rf12_sendStart(0, &payload, sizeof payload, 2);
+    broadcast();
     
     ledTriggerTime = micros();
 
@@ -105,11 +114,11 @@ void loop() {
   if (ledOn && phase <= ledDuration){
    // p("maintaining led");
     //digitalWrite(ledPin, HIGH);
-    digitalWrite(ledPin, HIGH);
+       analogWrite(ledPin, (ledDuration - phase) * 255 / ledDuration);
   } else if (ledOn && phase > ledDuration){
 
     ledOn = false;
-    digitalWrite(ledPin, LOW);
+    analogWrite(ledPin, 0);
     //digitalWrite(ledPin, LOW);
   }
 
