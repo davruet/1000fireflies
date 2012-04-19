@@ -13,7 +13,7 @@
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif
 #ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))  
 #endif
 
 
@@ -23,10 +23,10 @@
 #define RF12_SLEEP 0
 #define RF12_WAKEUP -1
 
-long period = 1600000;
-long halfPeriod = period / 2;
-unsigned long ledDuration = 600000;
-unsigned long irDuration = 50000;
+#define PERIOD 1600000 // Duration in microseconds of the blink cycle
+#define HALF_PERIOD 800000 
+#define LED_DURATION 60000 // Duration in microseconds of the LED blink
+#define PHASE_SHIFT_FACTOR 4 // Strength coefficient of adjustment made when receiving other signals
 
 int payload = 5;
 
@@ -34,8 +34,8 @@ int payload = 5;
 unsigned long ledTriggerTime = 0;
 boolean ledOn = false;
 
-int phaseShiftFactor = 4;
-int irRecoverTime = 400;
+
+
 
 //power button variables
 unsigned int buttonState = 0;
@@ -55,100 +55,6 @@ void setup() {
 
   rf12_initialize(4, RF12_433MHZ, 20);
 
-}
-
-void checkPowerToggle(){
-  unsigned int currentValue = getRawButtonValue();
-  buttonState <<= 1;
-  buttonState |= currentValue;
-  
-  buttonIsDown = (buttonState == 0xffff);
-  shutdownEnabled = shutdownEnabled | buttonState == 0; 
-  if (buttonIsDown && shutdownEnabled){
-    waitingForSleep = true;
-    
-  } else {
-    
-    if (waitingForSleep){
-      shutdownEnabled = false;
-      waitingForSleep = false;
-      goToSleep();
-      
-      shutdownEnabled = false;
-      waitingForSleep = false;
-    } 
-  }  
-}
-
-
-unsigned long getPhase(){
-    unsigned long now = micros();
-    if (now < ledTriggerTime) return 0;
-    unsigned long phase = now - ledTriggerTime;
-    return phase;
-}
-
-boolean listen(){
-  return rf12_recvDone() && rf12_crc == 0 && rf12_len == sizeof payload;  
-  //return false;
-}
-
- void broadcast(){
-
-  if (rf12_canSend()){
-
-    rf12_sendStart(0, &payload, sizeof payload, 2); 
-  }
-}
-
-
-void loop() {
-  
-  checkPowerToggle();
-  
-  if (listen()) {
-    //p("pulse %i avg %i val %i\n ", irDiff, irFilteredValue, val);
-    long timediff = micros() - ledTriggerTime;
-    long adjustment;
-    if (timediff < halfPeriod){ // we are too early. 
-      adjustment = timediff / phaseShiftFactor;  
-      //p("early %li +- %li\n", timediff, adjustment);
-     } else { // we are too late
-      adjustment = (timediff - period) / phaseShiftFactor;
-      //p("late %li +- %li\n", timediff, adjustment);
-    }
-    ledTriggerTime += adjustment;
-    
-  }
-  
-  unsigned long phase = getPhase();
-  // a bit of a hack, but phase might have had an overflow, if so, just use zero.
-  if (!ledOn && phase > period){
-    ledOn = true;
-    analogWrite(LED_PIN, 255);
-    
-    broadcast();
-    
-    ledTriggerTime = micros();
-
-     phase = getPhase();
-  } 
-
-  if (ledOn && phase <= ledDuration){
-   // p("maintaining led");
-    //digitalWrite(LED_PIN, HIGH);
-       analogWrite(LED_PIN, (ledDuration - phase) * 255 / ledDuration);
-  } else if (ledOn && phase > ledDuration){
-
-    ledOn = false;
-    analogWrite(LED_PIN, 0);
-    //digitalWrite(LED_PIN, LOW);
-  }
-
-  
-  //delay(4);
-  
-  
 }
 
 /** Gets the raw (un-debounced) value from the button.
@@ -185,6 +91,100 @@ void goToSleep() {
   sbi(ADCSRA,ADEN);  // Turn on ADC
   startTheDay();
 }
+
+void checkPowerToggle(){
+  unsigned int currentValue = getRawButtonValue();
+  buttonState <<= 1;
+  buttonState |= currentValue;
+  
+  buttonIsDown = (buttonState == 0xffff);
+  shutdownEnabled = shutdownEnabled | buttonState == 0; 
+  if (buttonIsDown && shutdownEnabled){
+    waitingForSleep = true;
+    
+  } else {
+    
+    if (waitingForSleep){
+      shutdownEnabled = false;
+      waitingForSleep = false;
+      goToSleep();
+      
+      shutdownEnabled = false;
+      waitingForSleep = false;
+    } 
+  }  
+}
+
+
+unsigned long getPhase(){
+    unsigned long now = micros();
+    if (now < ledTriggerTime) return 0;
+    unsigned long phase = now - ledTriggerTime;
+    return phase;
+}
+
+boolean listen(){
+  return rf12_recvDone() && rf12_crc == 0 && rf12_len == sizeof payload;  //-disable CRC and len check - noise is ok.
+  //return false;
+}
+
+ boolean broadcast(){
+    boolean canSend = rf12_canSend();
+    if (canSend) rf12_sendStart(0, &payload, sizeof payload); 
+    return canSend;
+}
+
+
+void loop() {
+  
+  checkPowerToggle();
+  
+  if (listen()) {
+    //p("pulse %i avg %i val %i\n ", irDiff, irFilteredValue, val);
+    long timediff = micros() - ledTriggerTime;
+    long adjustment;
+    if (timediff < HALF_PERIOD){ // we are too early. 
+      adjustment = timediff / PHASE_SHIFT_FACTOR;  
+      //p("early %li +- %li\n", timediff, adjustment);
+     } else { // we are too late
+      adjustment = (timediff - PERIOD) / PHASE_SHIFT_FACTOR;
+      //p("late %li +- %li\n", timediff, adjustment);
+    }
+    ledTriggerTime += adjustment;
+    
+  }
+  
+  unsigned long phase = getPhase();
+  
+  if (!ledOn && phase > PERIOD){
+    ledOn = true;
+    analogWrite(LED_PIN, 255);
+    
+    
+    
+    ledTriggerTime = micros();
+    if (!broadcast()) ledTriggerTime += LED_DURATION / 4; // Transmit a radio beacon.
+     phase = getPhase();
+  } 
+
+  if (ledOn && phase <= LED_DURATION){
+   // p("maintaining led");
+    digitalWrite(LED_PIN, HIGH);
+       //analogWrite(LED_PIN, (LED_DURATION - phase) * 255 / LED_DURATION);
+  } else if (ledOn && phase > LED_DURATION){
+
+    ledOn = false;
+    //analogWrite(LED_PIN, 0);
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  
+  //delay(4);
+  
+  
+}
+
+
 
 ISR(PCINT0_vect) {} //no-op interrupt
 

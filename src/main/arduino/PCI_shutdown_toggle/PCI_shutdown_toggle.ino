@@ -27,8 +27,8 @@
 void setup(){
   pinMode(SWITCH_PIN,INPUT);
   digitalWrite(SWITCH_PIN, HIGH);
-  sbi(GIMSK,PCIE0); // Turn on Pin Change interrupt
-  sbi(PCMSK0,PCINT2); // Which pins are affected by the interrupt
+  sbi(GIMSK,PCIE0); // Enable PCI
+  sbi(PCMSK0,PCINT2); // Set PCInt2 as the PCI pin
   //sbi(MCUCR, ISC00);
   
   pinMode(LED_PIN,OUTPUT);
