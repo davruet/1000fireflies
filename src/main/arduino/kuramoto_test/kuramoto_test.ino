@@ -1,3 +1,11 @@
+/*
+
+Test code for The Kuramoto Model hardware. Blinks the LED at startup, to test the LED connections.
+After that, it sends out a radio broadcast once per second, and blinks at the same time. Each 
+time it hears another radio broadcast, it also blinks. If it cannot send, it holds the LED on
+for a long period of time. 
+
+*/
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <JeeLib.h>
